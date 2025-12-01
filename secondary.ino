@@ -5,7 +5,7 @@
 #include <SoftwareSerial.h>
 
 // Setting up software serial
-SoftwareSerial link(0,1);
+SoftwareSerial link(7,10);
 
 // pins
 int buttonPin = 13;
@@ -65,7 +65,7 @@ void setup()
   pinMode(ledPin, OUTPUT);
   pinMode(buzzerPin, OUTPUT);
   
-  servo.attach(10);
+  servo.attach(8);
   
   lcd.init();
   lcd.backlight();
@@ -85,7 +85,7 @@ void loop()
 
   // Reading from P
   if (link.available()) {
-    char messagedReceived = link.read();
+    messageReceived = link.read();
     Serial.println(messageReceived);
     if (messageReceived == 'T') {
       Serial.println("Received turn from S");
@@ -105,7 +105,6 @@ void loop()
       // buzz when turn starts/ends
       if (ledState) {
         tone(buzzerPin, 700, 100);
-        isTurn = true;
     }
       if (!ledState) {
       	tone(buzzerPin, 500, 100);
