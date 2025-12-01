@@ -31,6 +31,9 @@ References:
 - https://www.instructables.com/I2C-between-Arduinos/
 - https://github.com/fmalpartida/New-LiquidCrystal
 ----------------------------------------------*/
+#include <time.h>
+#include <TM1637Display.h>
+#include <Servo.h>
 
 #define NOTE_C4  262
 
@@ -53,47 +56,73 @@ int motorPin = 10;
 int melody = NOTE_C4;
 int noteDuration = 60;
 
-// Button
+// Button 1
 const int buttonPIN_A = 8;
 int buttonState = HIGH;
 int prevButtonState = LOW;
 
+// Button 2
+const int buttonPIN_B = 4;
+int buttonState_B = HIGH;
+int prevButtonState_B = LOW;
+
+
+// Servo
+Servo servo;
+int pos = 0;
+
 // Time
 unsigned long lastDebounceTime = 0;
+unsigned long lastDebounceTime_B = 0;
 unsigned long debounceDelay = 50;
-unsigned long previous_Millis;
-unsigned long time = 3000; // 3 seconds
-unsigned long startTime;
-unsigned long interval = 1000;
+tm currTime;
+unsigned long lastUpdate = 0;
+bool turn = false;
+
+
+// Time segment
+TM1637Display seg(3,2);
+char timeBuf[10];
+
+
+void displayTime() {
+  int value = currTime.tm_min * 100 + currTime.tm_sec;
+  seg.showNumberDecEx(value, 0b01000000, true);
+}
 
 
 void setup() {
   pinMode(buttonPIN_A, INPUT_PULLUP);
+  pinMode(buttonPIN_B, INPUT_PULLUP);
   pinMode(ledPIN_One, OUTPUT);
   pinMode(motorPin, OUTPUT);
   Serial.begin(9600);
-  startTime = millis();
 
+  currTime.tm_min = 10;
+  currTime.tm_sec = 0;
+  servo.attach(11);
+
+  seg.setBrightness(7);
+  displayTime();
 }
 
 
 void loop() {
-  //unsigned long current_Millis = millis();
-  unsigned long timeElapsed = millis() - startTime;
-  unsigned long remaining;
-  String messageReceived = "time low";
+  unsigned long current_Millis = millis();
+  int reading_A = digitalRead(buttonPIN_A);
+  int reading_B = digitalRead(buttonPIN_B);
+  String messageReceived = "turn done";
   String timeLow = "time low";
   String turnDone = "turn done";
   String win = "win";
   String lost = "lost";
-  bool turn = false;
 
 
   // Listen for message from S
   /*if (Serial.available() > 0) {*/
     
     // If message is 'time low', change RGB color to Secondary (Red)
-    if (messageReceived.compareTo(timeLow) == 0) {
+    if (messageReceived == timeLow) {
       analogWrite(RGB_Red, 255);
       analogWrite(RGB_Green, 0);
       analogWrite(RGB_Blue, 0);
@@ -101,100 +130,105 @@ void loop() {
     }
 
     // If turn is done, set turn to true
-    if (messageReceived.compareTo(turnDone) == 0) {
+    if (messageReceived == turnDone) {
       turn = true;
     }
 
     // If message is 'win', send 'lost' to C
-    if (messageReceived.compareTo(win) == 0) {
+    if (messageReceived == win) {
       // Send lost to C
     }
 
     // If message is 'lost', send 'win' to C
-    if (messageReceived.compareTo(lost) == 0) {
+    if (messageReceived == lost) {
       // Send win to C
     }
 
   //}
 
   if (turn == true) {
-    // Get time
-    remaining = ((time - timeElapsed) / 1000);
 
-
-    // time remaining
-    if (remaining == 0) {
+    // Time remaining
+    if (currTime.tm_min == 0 && currTime.tm_sec == 0) {
       // Send lost to C
     }
 
     // If message is 'time low', change RGB color to Primary (Green)
-    else if (messageReceived.compareTo(timeLow)) {
+    else if (messageReceived == timeLow) {
       analogWrite(RGB_Red, 0);
       analogWrite(RGB_Green, 255);
       analogWrite(RGB_Blue, 0);
-      //analogWrite(motorPin, 200);
+      //analogWrite(motorPin, 150);
     }
 
     else {
-      // update analog time
-      // update digital time
 
+      if (millis() - lastUpdate >= 1000) {
+        lastUpdate = millis();
+
+
+      // Updating seconds
+        if  ((currTime.tm_min > 0) || (currTime.tm_sec > 0)) {
+          currTime.tm_sec--;
+
+          // servo tick
+          pos += 180;
+          if (pos > 180) {
+            pos = 0;
+          }
+          servo.write(pos);
+
+          // Updating minutes
+          if (currTime.tm_sec < 0) {
+      	    currTime.tm_sec = 59;
+      	    currTime.tm_min--;
+          }
+        }
+        displayTime();
+      }
 
       // if button pressed double
-        // send win to C
+      // send win to C
+      if (reading_B != prevButtonState_B) {
+        lastDebounceTime_B = millis();
+      }
+
+      if ((millis() - lastDebounceTime_B) > debounceDelay) {
+        if (reading_B != buttonState_B) {
+          buttonState_B = reading_B;
+        }
+
+          if (buttonState_B == HIGH) {
+            // send win;
+          }
+      }
 
       // if button pressed once
-        // stop timer, turn off led, turn = false, player buzzer, send turn done
+      // stop timer, turn off led, turn = false, player buzzer, send turn done
+      if (reading_A != prevButtonState) {
+      lastDebounceTime = millis();
+      }
 
+      if ((millis() - lastDebounceTime) > debounceDelay) {
 
+        if (reading_A != buttonState) {
+        buttonState = reading_A;
+        
 
+          if (buttonState == HIGH) {
+            ledState_A = LOW;
+            turn = false;
+            //tone(7, melody, noteDuration);
+            // send turn done to S
+          }
 
-    }
-
-  }
-
-
-
-  /*if (current_Millis - previous_Millis >= interval) {
-    previous_Millis = current_Millis;
-
-    if (current_Millis == 10000) {
-
-    }
-
-    if (current_Millis == 15000) {
-      analogWrite(motorPin, 0);
-    }
-  }*/
-
-  
-
-
-
-
-
-  /*int reading_A = digitalRead(buttonPIN_A);
-
-  if (reading_A != prevButtonState) {
-    lastDebounceTime = millis();
-  }
-
-  if ((millis() - lastDebounceTime) > debounceDelay) {
-    if (reading_A != buttonState) {
-      buttonState = reading_A;
-
-      if (buttonState == HIGH) {
-          ledState_A = !ledState_A;
+        }
       }
     }
   }
 
-  tone(7, melody, noteDuration);
-  
   digitalWrite(ledPIN_One, ledState_A);
-
-
-  prevButtonState = reading_A;*/
+  prevButtonState = reading_A;
 }
 
 
