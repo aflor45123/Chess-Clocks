@@ -37,11 +37,11 @@ References:
 #include <SoftwareSerial.h>
 
 #define NOTE_C4  262
-SoftwareSerial link(0,1);
+SoftwareSerial link(7,10);
 
 // LED
 const int ledPIN_One = 12;
-int ledState_A = HIGH;
+int ledState_A = LOW;
 
 // LED RGB
 const int RGB_Red = 5;
@@ -52,7 +52,7 @@ int green = 0;
 int blue = 0;
 
 // Fan
-int motorPin = 10;
+int motorPin = 13;
 
 // Buzzer
 int melody = NOTE_C4;
@@ -60,8 +60,8 @@ int noteDuration = 60;
 
 // Button 1
 const int buttonPIN_A = 8;
-int buttonState = HIGH;
-int prevButtonState = LOW;
+int buttonState;
+int prevButtonState = HIGH;
 
 // Button 2
 const int buttonPIN_B = 4;
@@ -80,7 +80,7 @@ unsigned long debounceDelay = 50;
 tm currTime;
 unsigned long lastUpdate = 0;
 bool turn = true;
-
+char messageReceived;
 
 // Time segment
 TM1637Display seg(3,2);
@@ -118,15 +118,14 @@ void loop() {
   unsigned long current_Millis = millis();
   int reading_A = digitalRead(buttonPIN_A);
   int reading_B = digitalRead(buttonPIN_B);
-  char messageReceived;
+ 
 
 
   // Listen for message from S
   if (link.available()) {
     messageReceived = link.read();
-    //Serial.println(messageReceived);
-    //link.write('a');
-  }
+    //Serial.println(" I'm here");
+  
     // If message is 'time low', change RGB color to Secondary (Red)
     if (messageReceived == 'L') {
       analogWrite(RGB_Red, 255);
@@ -151,7 +150,7 @@ void loop() {
     if (messageReceived == 'L') {
       // Send win to C
     }*/
-
+  }
   
 
   if (turn == true) {
@@ -166,7 +165,7 @@ void loop() {
       analogWrite(RGB_Red, 0);
       analogWrite(RGB_Green, 255);
       analogWrite(RGB_Blue, 0);
-      //analogWrite(motorPin, 150);
+      analogWrite(motorPin, 150);
     }
 
     else {
@@ -223,14 +222,15 @@ void loop() {
         buttonState = reading_A;
         
 
-          if (buttonState == HIGH) {
-            ledState_A = LOW;
+          if (buttonState == LOW) {
+            analogWrite(motorPin, 150);
+            ledState_A = !ledState_A;
             turn = false;
             sendTurn();
 
             //tone(7, melody, noteDuration);
             // send turn done to S
-          }
+          }   
 
         }
       }
