@@ -34,8 +34,10 @@ References:
 #include <time.h>
 #include <TM1637Display.h>
 #include <Servo.h>
+#include <SoftwareSerial.h>
 
 #define NOTE_C4  262
+SoftwareSerial link(0,1);
 
 // LED
 const int ledPIN_One = 12;
@@ -77,7 +79,7 @@ unsigned long lastDebounceTime_B = 0;
 unsigned long debounceDelay = 50;
 tm currTime;
 unsigned long lastUpdate = 0;
-bool turn = false;
+bool turn = true;
 
 
 // Time segment
@@ -90,6 +92,10 @@ void displayTime() {
   seg.showNumberDecEx(value, 0b01000000, true);
 }
 
+void sendTurn() {
+  link.write('T');
+  Serial.println("Sent turn to S");
+}
 
 void setup() {
   pinMode(buttonPIN_A, INPUT_PULLUP);
@@ -97,6 +103,7 @@ void setup() {
   pinMode(ledPIN_One, OUTPUT);
   pinMode(motorPin, OUTPUT);
   Serial.begin(9600);
+  link.begin(9600);
 
   currTime.tm_min = 10;
   currTime.tm_sec = 0;
@@ -111,40 +118,41 @@ void loop() {
   unsigned long current_Millis = millis();
   int reading_A = digitalRead(buttonPIN_A);
   int reading_B = digitalRead(buttonPIN_B);
-  String messageReceived = "turn done";
-  String timeLow = "time low";
-  String turnDone = "turn done";
-  String win = "win";
-  String lost = "lost";
+  char messageReceived;
 
 
   // Listen for message from S
-  /*if (Serial.available() > 0) {*/
-    
+  if (link.available()) {
+    messageReceived = link.read();
+    //Serial.println(messageReceived);
+    //link.write('a');
+  }
     // If message is 'time low', change RGB color to Secondary (Red)
-    if (messageReceived == timeLow) {
+    if (messageReceived == 'L') {
       analogWrite(RGB_Red, 255);
       analogWrite(RGB_Green, 0);
       analogWrite(RGB_Blue, 0);
-      //analogWrite(motorPin, 200);
+      Serial.println("Received time low from S");
+      analogWrite(motorPin, 150);
     }
 
     // If turn is done, set turn to true
-    if (messageReceived == turnDone) {
+    if (messageReceived == 'T') {
+      Serial.println("Received turn from S");
       turn = true;
     }
-
+    
     // If message is 'win', send 'lost' to C
-    if (messageReceived == win) {
+    /*if (messageReceived == 'W') {
       // Send lost to C
     }
 
     // If message is 'lost', send 'win' to C
-    if (messageReceived == lost) {
+    if (messageReceived == 'L') {
       // Send win to C
-    }
+    }*/
 
-  //}
+  
 
   if (turn == true) {
 
@@ -154,7 +162,7 @@ void loop() {
     }
 
     // If message is 'time low', change RGB color to Primary (Green)
-    else if (messageReceived == timeLow) {
+    else if (messageReceived == 'L') {
       analogWrite(RGB_Red, 0);
       analogWrite(RGB_Green, 255);
       analogWrite(RGB_Blue, 0);
@@ -206,7 +214,7 @@ void loop() {
       // if button pressed once
       // stop timer, turn off led, turn = false, player buzzer, send turn done
       if (reading_A != prevButtonState) {
-      lastDebounceTime = millis();
+        lastDebounceTime = millis();
       }
 
       if ((millis() - lastDebounceTime) > debounceDelay) {
@@ -218,6 +226,8 @@ void loop() {
           if (buttonState == HIGH) {
             ledState_A = LOW;
             turn = false;
+            sendTurn();
+
             //tone(7, melody, noteDuration);
             // send turn done to S
           }
