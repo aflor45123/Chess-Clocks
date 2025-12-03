@@ -57,6 +57,7 @@ int motorPin = 13;
 // Buzzer
 int melody = NOTE_C4;
 int noteDuration = 60;
+int buzzerPin = 1;
 
 // Button 1
 const int buttonPIN_A = 8;
@@ -105,7 +106,7 @@ void setup() {
   Serial.begin(9600);
   link.begin(9600);
 
-  currTime.tm_min = 10;
+  currTime.tm_min = 2;
   currTime.tm_sec = 0;
   servo.attach(11);
 
@@ -228,7 +229,7 @@ void loop() {
             turn = false;
             sendTurn();
 
-            //tone(7, melody, noteDuration);
+            //tone(buzzerPin, melody, noteDuration);
             // send turn done to S
           }   
 
